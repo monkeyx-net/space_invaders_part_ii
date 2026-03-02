@@ -1162,15 +1162,16 @@ Renderer::~Renderer()
   SDL_DestroyWindow(_window);
 }
 
-void Renderer::setViewport(iRect viewport)
+void Renderer::setViewport(iRect screenRect, iRect worldRect)
 {
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
-  glOrtho(0.0, viewport._w, 0.0, viewport._h, -1.0, 1.0);
+  glOrtho(0.0, worldRect._w, 0.0, worldRect._h, -1.0, 1.0);
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
-  glViewport(viewport._x, viewport._y, viewport._w, viewport._h);
-  _viewport = viewport;
+  glViewport(screenRect._x, screenRect._y, screenRect._w, screenRect._h);
+  _viewport = worldRect;
+  _screenViewport = screenRect;
 }
 
 void Renderer::blitText(Vector2f position, const std::string& text, const Font& font, const Color3f& color)
@@ -1275,7 +1276,7 @@ void Renderer::clearWindow(const Color3f& color)
 void Renderer::clearViewport(const Color3f& color)
 {
   glEnable(GL_SCISSOR_TEST);
-  glScissor(_viewport._x, _viewport._y, _viewport._w, _viewport._h);
+  glScissor(_screenViewport._x, _screenViewport._y, _screenViewport._w, _screenViewport._h);
   glClearColor(color.getRed(), color.getGreen(), color.getBlue(), 1.f);
   glClear(GL_COLOR_BUFFER_BIT);
   glDisable(GL_SCISSOR_TEST);
@@ -1924,22 +1925,12 @@ void Application::onWindowResize(int32_t windowWidth, int32_t windowHeight)
 {
   Vector2i worldSize = getWorldSize();
 
-  if((windowWidth < worldSize._x) || (windowHeight < worldSize._y)){
-    _isWindowTooSmall = true;
-    _engine->pause();
-    _viewport._x = 0;
-    _viewport._y = 0;
-    _viewport._w = windowWidth;
-    _viewport._h = windowHeight;
-  }
-  else{
-    _isWindowTooSmall = false;
-    _engine->unpause();
-    _viewport._x = (windowWidth - worldSize._x) / 2;
-    _viewport._y = (windowHeight - worldSize._y) / 2;
-    _viewport._w = worldSize._x;
-    _viewport._h = worldSize._y;
-  }
+  _isWindowTooSmall = false;
+  _engine->unpause();
+
+  // World coordinates stay fixed; GL stretches to fill the window.
+  _viewport = {0, 0, worldSize._x, worldSize._y};
+  _screenViewport = {0, 0, windowWidth, windowHeight};
 }
 
 bool Application::initialize(Engine* engine, int32_t windowWidth, int32_t windowHeight)
@@ -1958,7 +1949,7 @@ void Application::onDraw(double now, float dt)
 {
   assert(_activeState != nullptr);
 
-  pxr::renderer->setViewport(_viewport);
+  pxr::renderer->setViewport(_screenViewport, _viewport);
 
   if(_isWindowTooSmall)
     drawWindowTooSmall();

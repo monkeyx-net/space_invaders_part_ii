@@ -716,7 +716,8 @@ public:
   Renderer(const Renderer&) = delete;
   Renderer* operator=(const Renderer&) = delete;
   ~Renderer();
-  void setViewport(iRect viewport);
+  void setViewport(iRect screenRect, iRect worldRect);
+  void setViewport(iRect rect) { setViewport(rect, rect); }
   void blitText(Vector2f position, const std::string& text, const Font& font, const Color3f& color);
   void blitBitmap(Vector2f position, const Bitmap& bitmap, const Color3f& color);
   void drawBorderRect(const iRect& rect, const Color3f& background, const Color3f& borderColor, int32_t borderWidth = 1);
@@ -729,7 +730,8 @@ private:
   SDL_Window* _window;
   SDL_GLContext _glContext;
   Config _config;
-  iRect _viewport;
+  iRect _viewport;       // world coordinate space (used for bounds checking)
+  iRect _screenViewport; // actual screen pixels (used for GL viewport and scissor)
 };
 
 extern std::unique_ptr<Renderer> renderer;
@@ -1096,7 +1098,8 @@ private:
 private:
   std::unordered_map<std::string, std::unique_ptr<ApplicationState>> _states;
   std::unique_ptr<ApplicationState>* _activeState;
-  iRect _viewport;
+  iRect _viewport;       // world coordinate space
+  iRect _screenViewport; // actual screen pixels
   Engine* _engine;
   bool _isWindowTooSmall;
 };
